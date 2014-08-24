@@ -17,6 +17,7 @@
 \usepackage[all]{xy}
 \usepackage{mathtools}
 \usepackage{array}
+\usepackage{verbatim}
 
 \theoremstyle{theorem}
 \newtheorem{theorem}{Theorem}[section]
@@ -82,17 +83,17 @@ In this section, we will first discuss definition of Incremental Forest syntax. 
 $\boxed{Static\; Forest\; definitions}$
 \begin{align*}
 	& Specification ~~s	& ::= 	& ~k^{\pi_1}_{\pi_2} ~|~ e::s ~|~ \langle x : s_1, s_2 \rangle ~|~ \{s\mid x\in e\} ~|~ s = P(e) ~|~ s? \\
-	& Type ~~t & ::= 	& ~\mathtt{String} ~|~ t_1 \times t_2 ~|~ t~\mathtt{set} ~|~ \mathtt{Maybe}~t ~|~ \mathtt{()} ~|~ \mathtt{Bool}\\
+	& Type ~~t & ::= 	& ~\mathtt{String} ~|~ t_1 \times t_2 ~|~ t~\mathtt{Map} ~|~ \mathtt{Maybe}~t ~|~ \mathtt{()} ~|~ \mathtt{Bool}\\
 	& Environment ~~\varepsilon & ::= & ~\emptyset ~|~ \varepsilon, x\mapsto v
 \end{align*}
 
 $\boxed{incremental\;Forest\;definitions}$
 %!!!!!laignment problem
 \begin{align*}
-	& Change ~~\delta & ::= 	& ~\leadsto v ~|~ \delta_1 \cdot \delta_2 ~|~ \fst\,\delta_1 ~|~ \snd\,\delta_2 ~|~ \delta_1? ~|~ \delta_1 \otimes \delta_2 ~|~ f \leftarrow \delta_1\\
-	& 		& |		&~ \mathtt{add}(n, v) ~|~ \mathtt{del}(n, v) ~|~ \mathtt{mod}(n, \delta_1) ~|~ \emptyset\\
+	& Change ~~\delta & ::= 	& ~\leadsto v ~|~ \delta_1 \cdot \delta_2 ~|~ \fst\,\delta_1 ~|~ \snd\,\delta_2 ~|~ \delta_1? ~|~ f \leftarrow \delta_1\\
+	& 		& |		&~ \mathtt{add}(n, v) ~|~ \mathtt{del}(n) ~|~ \mathtt{mod}(n, \delta_1) ~|~ \emptyset\\
 	& Update~on~files ~~\delta_F 	& ::= 	& ~\mathtt{addFile}(r,\omega) ~|~ \mathtt{rmvFile}(r) ~|~ \mathtt{chgAttri}(r,a') ~|~ \delta_1 \cdot \delta_2 ~|~ \emptyset\\
-	& Update~on~environments ~~\delta_\varepsilon & ::= & ~\emptyset ~|~ \delta_\varepsilon, x \mapsto (v,\delta_v) \\
+	& Update~on~environments ~~\delta_\varepsilon & ::= & ~\emptyset ~|~ \delta_\varepsilon, \delta_x \mapsto \delta_v \\
 	%& Update ~~u 	  & ::=		& ~ \emptyset ~|~ u \cdot \delta_F ~|~ u \cdot \delta_\varepsilon
 \end{align*}
 
@@ -104,16 +105,34 @@ $\fst\,\delta_1$ means apply the change $\delta_1$ to the first element of the p
 $\delta_1?$ means apply the change and find out either this file system that is undefined at the current path, or a file system containing the current path and satisfying the specification; 
 the $\delta_1 \otimes \delta_2$ equals to $\fst\,\delta_1 \cdot \snd\,\delta_2$, which can be applied to change two elements of a pair separately; 
 The other three $\mathtt{add}(n, v) ~|~ \mathtt{del}(n, v) ~|~ \mathtt{mod}(n, \delta_1)$ is for applying changes for elements in the map from the comprehension specification; 
-$\emptyset$ is for empty sequence, which means doing nothing. \\
+$\emptyset$ is for empty sequence, which means doing nothing. Besides these syntax, we define syntax sugar $\otimes$:
+\begin{displaymath}
+\delta_1 \otimes \delta_2 = \fst\,\delta_1 \cdot \snd\,\delta_2
+\end{displaymath}
+
+We can also define some algebraric operation on changes $\delta$.
+\begin{align*}
+	& \delta \cdot \leadsto v \Rightarrow \leadsto v \\
+	& \delta \cdot \emptyset \Rightarrow \delta \\
+	& \emptyset \cdot \delta \Rightarrow \delta
+\end{align*}
 
 Updates on file system is abstracted to adding a file with content $\omega$ to path $r$ as $\mathtt{addFile}(r,\omega)$; deleting a file from path $r$ as $\mathtt{rmvFile}(r)$; changing attributes of a file as $\mathtt{chgAttri}(r,a')$; combinations of updates as $\delta_1 \cdot \delta_2$ and finally, doing nothing as $\emptyset$.\\
 
-For Forest environment, $\varepsilon: V\!ars \mapsto V\!als$, it maps variables to values. Environment update $\delta_\varepsilon: V\!ars \mapsto V\!als \times \delta_v$ maps from variables to product of values and its change. Thus for any variable $x$, we have:
-\begin{eqnarray*}
-	\varepsilon (x) &=& v\\
-	\delta_\varepsilon (x) &=& (\varepsilon(x), \delta_x)
-\end{eqnarray*}
+For Forest environment, $\varepsilon: V\!ars \mapsto V\!als$, it maps variables to values. Environment update $\delta_\varepsilon: \epsilon \mapsto \epsilon$ maps from environment to new environment. The mapping rule for $\delta_\varepsilon$ is:
+\begin{displaymath}
+	\delta_\varepsilon(\varepsilon') = \varepsilon''
+\end{displaymath}
+\begin{displaymath}
+	where ~\forall x \in \mathtt{dom}(\varepsilon''), x \in \mathtt{dom}(\varepsilon') \quad \delta_x(\varepsilon'(x)) = \varepsilon''(x)
+\end{displaymath}
 
+In Increamental Forest, There is always a variable $\cdot$ that denotes the current path $r$. We will use $r$ to represent current path as a syntax sugar in this paper.
+\begin{displaymath}
+	r = \varepsilon(\cdot)
+\end{displaymath}
+
+\begin{comment}
 For example, in Adaptive Forest, environment always contain a variable r which maps to the current path. We define environment before update $\varepsilon_{old}$, alias \emph{old} $\varepsilon$; environment after update $\varepsilon_{new}$, alias \emph{new} $\varepsilon$. Given any updates $\delta_\varepsilon$:
 \begin{align*}
 	\varepsilon_{old}(x) =& ~v\\
@@ -130,51 +149,54 @@ We also define equivalance of two environments $\varepsilon_1$ and $\varepsilon_
 \begin{displaymath}
 	where \quad \mathtt{dom}(\varepsilon_1) = \mathtt{dom}(\varepsilon_2) ~\wedge~ \forall x \in \mathtt{dom}(\varepsilon_1), \quad \delta_\varepsilon(x) = (x, \emptyset)
 \end{displaymath}
+\end{comment}
 
 After we define all the syntax of Incremental Forest, we can move on to the semantic part.
 
+\newpage
+
 \section{Semantic of Incremental Forest}
 
-We sill discuss semantic of Incremental Forest under different specification in this section.\\
+We will discuss semantic of Incremental Forest under different specification in this section.\\
 
 $\boxed{s ::= k^{\pi_1}_{\pi_2}}$
 
 \begin{displaymath}
 	\frac{F(r) = (a, \mathtt{File}(\omega))}
-	{\varepsilon, k \vdash \mathtt{load}~F \rhd (\omega, (True, a))}
+	{\varepsilon, r, k \vdash \mathtt{load}~F \rhd (\omega, (True, a))}
 \end{displaymath}
 
 %$\boxed{\delta_\varepsilon, k \vdash \mathtt{load}_\Delta (F,v,d):}$
 \begin{align*}
-	&\delta_\varepsilon, k \vdash \mathtt{load}_\Delta (F,v,d):
+	& \varepsilon, \delta_\varepsilon, r, k \vdash \mathtt{load}_\Delta (F,v,d):
 \end{align*}
 \begin{align*}
-	\delta_F					 &\rhd& ~(\leadsto \omega', \leadsto(True, a))			& &~if ~\varepsilon_{new}(r) \not= \varepsilon_{old}(r) \\
-	\mathtt{addFile}(r',\omega') &\rhd& ~(\leadsto \omega', \leadsto(True, a))			& &~if ~\varepsilon_{new}(r) = r' \\
-								 &\rhd& ~(\emptyset,\emptyset)								& &~otherwise \\
-	\mathtt{rmvFile}(r') 		 &\rhd& ~(\leadsto `` '', \leadsto(False, default))			& &~if ~\varepsilon_{new}(r) = r' \\
-								 &\rhd& ~(\emptyset,\emptyset)								& &~otherwise \\
-	\mathtt{addAttri}(r', a')	 &\rhd& ~(\emptyset, \snd(\leadsto a'))				& &~if ~\varepsilon_{newtheorem}(r) = r' \\
-								 &\rhd& ~(\emptyset,\emptyset)								& &~otherwise	\\
-	\emptyset					 &\rhd& ~(\emptyset,\emptyset)								& &~ if ~\varepsilon_{new} = \varepsilon_{old}\\
-								 &\rhd& ~(\leadsto \omega', \leadsto (Ture, a))				& &~ if ~\varepsilon_{new} \not= \varepsilon_{old} ~\wedge ~\varepsilon_{new}, k \vdash \mathtt{load}~F \rhd (\omega', (True, a))
+%	\delta_F					 &\rhd& ~(\leadsto \omega', \leadsto(True, a))			& &~if ~\varepsilon_{new}(r) \not= \varepsilon_{old}(r) \\
+	\mathtt{addFile}(r',\omega') &\rhd& ~(\leadsto \omega', \leadsto True)			& &~if ~r = r' \\
+	\mathtt{addFile}(r',\omega') &\rhd& ~(\emptyset,\emptyset)								& &~otherwise \\
+	\mathtt{rmvFile}(r') 		 &\rhd& ~(\leadsto `` '', \leadsto False)			& &~if ~r = r' \\
+	\mathtt{rmvFile}(r')		 &\rhd& ~(\emptyset,\emptyset)								& &~otherwise 
+%	\mathtt{addAttri}(r', a')	 &\rhd& ~(\emptyset, \snd(\leadsto a'))				& &~if ~\varepsilon_{newtheorem}(r) = r' \\
+%								 &\rhd& ~(\emptyset,\emptyset)								& &~otherwise	\\
+%	\emptyset					 &\rhd& ~(\emptyset,\emptyset)								& &~ if ~\varepsilon_{new} = \varepsilon_{old}\\
+%								 &\rhd& ~(\leadsto \omega', \leadsto (Ture, a))				& &~ if ~\varepsilon_{new} \not= \varepsilon_{old} ~\wedge ~\varepsilon_{new}, k \vdash \mathtt{load}~F \rhd (\omega', (True, a))
 \end{align*}
 
-In incremental Forest, $\delta_\varepsilon$ contains the current path value in the variable $r$. 
-If the path of file that Incremental Forest should load has changed, then Incremental Forest will reload it with highest priority.
-When an update occurs in the file system, incremental Forest will change the representation and metadata if the update happens at the current path. 
-In the rest of the section, we will use the $\varepsilon_{old}(r)$ or simply $r$ to get the old path.\\
+When an update occurs in the file system, Incremental Forest will check whether the update happens at the path it is focusing on.
+If the updates happens on the current path $r$, then Incremental Forest will overwrite the representation and metadata.
+Otherwise, it will do nothing.\\
 
 $\boxed{Combination ~ of ~ Updates}$
 
 \begin{displaymath}
 	\frac{\begin{array}{c}
-		\delta_\varepsilon, k \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_{F_1} \rhd (\delta_{v_1}, \delta_{d_1})\\
-		\delta_\varepsilon, k \vdash \mathtt{load}_\Delta (\delta_{F_1} F,~\delta_{v_1} v,~\delta_{d_1} d)~ \delta_{F_2} \rhd (\delta_{v_2}, \delta_{d_2})
+		\varepsilon, \delta_\varepsilon, r, s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_{F_1} \rhd (\delta_{v_1}, \delta_{d_1})\\
+		\varepsilon, \delta_\varepsilon, r, s \vdash \mathtt{load}_\Delta (\delta_{F_1} F,~\delta_{v_1} v,~\delta_{d_1} d)~ \delta_{F_2} \rhd (\delta_{v_2}, \delta_{d_2})
 	\end{array}}
-	{\delta_\varepsilon, k \vdash \mathtt{load}_\Delta (F,v,d)~ (\delta_{F_1} \cdot \delta_{F_2}) \rhd ((\delta_{v_2} \cdot \delta_{v_1}), (\delta_{d_2} \cdot \delta_{d_1}))}
+	{\delta_\varepsilon, s \vdash \mathtt{load}_\Delta (F,v,d)~ (\delta_{F_1} \cdot \delta_{F_2}) \rhd ((\delta_{v_2} \cdot \delta_{v_1}), (\delta_{d_2} \cdot \delta_{d_1}))}
 \end{displaymath}
 
+\begin{comment}
 \begin{displaymath}
 	\frac{\begin{array}{c}
 		{\delta_\varepsilon}' = (\delta_\varepsilon, x \mapsto (m, \delta_m))\\
@@ -182,6 +204,7 @@ $\boxed{Combination ~ of ~ Updates}$
 	\end{array}}
 	{{\delta_\varepsilon}', k \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v, \delta_d)}
 \end{displaymath}
+\end{comment}
 
 In Incremental Forest, if an update can be splited into separate updates, the result stays the same between loading separate updates step by step or load them as one update.\\
 
@@ -189,10 +212,11 @@ $\boxed{e::s}$
 
 \begin{displaymath}
 	\frac{
-		(\varepsilon, r \mapsto \llbracket r/e \rrbracket^\varepsilon_{Path}) , s \vdash \mathtt{load}~F \rhd (v, d)
+		r' = \llbracket r/e \rrbracket^\varepsilon_{Path} \quad \varepsilon, r', s \vdash \mathtt{load}~F \rhd(v, d)
+		%(\varepsilon, r \mapsto \llbracket r/e \rrbracket^\varepsilon_{Path}) , s \vdash \mathtt{load}~F \rhd (v, d)
 	}
 	{
-		\varepsilon, e::s \vdash \mathtt{load}~F \rhd (v,d)
+		\varepsilon, r, e::s \vdash \mathtt{load}~F \rhd (v,d)
 	}
 \end{displaymath}
 
@@ -209,129 +233,184 @@ $\boxed{Incremental~~e::s}$
 
 \begin{displaymath}
 	\frac{\begin{array}{c}
-		\llbracket r/e \rrbracket^{\varepsilon_{old}}_{Path} = \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}\\
-		(\delta_\varepsilon \setminus r, r \mapsto (\llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path},\emptyset)) , s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
+		\llbracket r/e \rrbracket^{\varepsilon}_{Path} = \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}\\
+		\varepsilon, \delta_\varepsilon, \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
 	\end{array}}
 	{
-		\delta_\varepsilon, e::s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
+		\varepsilon, \delta_\varepsilon, r, e::s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
 	}
 \end{displaymath}
 \begin{displaymath}
 	\frac{\begin{array}{c}
-		\llbracket r/e \rrbracket^{\varepsilon_{old}}_{Path} \not= \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path} ~\land \\
-		\varepsilon_\delta, \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path} , s \vdash \mathtt{load}(F')~ u \rhd (v,d) ~~ where ~ F' = \delta_F F
+		\llbracket r/e \rrbracket^{\varepsilon}_{Path} \not= \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}\\
+		\delta_\varepsilon(\varepsilon), \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path} , s \vdash \mathtt{load}(\delta_F F)~ u \rhd (v,d)
 	\end{array}}
 	{
-		\delta_\varepsilon, r, e::s \vdash \mathtt{load}_\Delta (F,v,d)~ u \rhd (\leadsto v,\leadsto d)
+		\varepsilon, \delta_\varepsilon, r, e::s \vdash \mathtt{load}_\Delta (F,v,d)~ u \rhd (\leadsto v,\leadsto d)
 	}
 \end{displaymath}
 
 In Incremental Forest, path specification $e\!::\!s$ will create a new path but may not result in the same path in old environment and new environment. 
-We solve this by always applying the new path in the new environment to the path variable $r$. 
-When the path changes, Incremental Forest will record the change of path. This change in file path will finally trigger reload semantic in constant specification.
-When the path keeps the same, one tricky part here is we don't change the path variable. Instead, we add a new path variable into the $\delta_environment$ so that Incremental Forest will not produce any extra environment change itself.\\
+When the $r/e$ evaluates to the same path in both new and old environment, we will recursively use delta load function.
+Once $r/e$ differs between the new and old environment, then we will directly load the data, because we are now  definitely loading a new file. \\
+%We solve this by always applying the new path in the new environment to the path variable $r$. 
+%When the path changes, Incremental Forest will record the change of path. This change in file path will finally trigger reload semantic in constant specification.
+%When the path keeps the same, one tricky part here is we don't change the path variable. Instead, we add a new path variable into the $\delta_environment$ so that Incremental Forest will not produce any extra environment change itself.\\
 %The delta environment $(\delta_\varepsilon \setminus r, r \mapsto (\llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}),id)$ means Incremental Forest will abandon the old file path and focus on the new file path.\\
 
 $\boxed{s = \langle x : s_1, s_2 \rangle}$
 
 \begin{displaymath}
 	\frac{\begin{array}{c}
-		\varepsilon, s_1 \vdash \mathtt{load}~F \rhd (v_1,d_1)\\
-		(\varepsilon, x \mapsto v_1, x_{md} \mapsto v_2), s_2 \vdash \mathtt{load}~F \rhd (v_2,d_2)\\
+		\varepsilon, r, s_1 \vdash \mathtt{load}~F \rhd (v_1,d_1)\\
+		(\varepsilon, x \mapsto v_1, x_{md} \mapsto d_1), r, s_2 \vdash \mathtt{load}~F \rhd (v_2,d_2)\\
 		b = \mathtt{valid}(d_1) \land \mathtt{valid}(d_2)
 	\end{array}}
-	{\varepsilon, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~F \rhd ((v_1, v_2),(b,(d_1,d_2))) }
+	{\varepsilon, r, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~F \rhd ((v_1, v_2),b) }
 \end{displaymath}
 
 $\boxed{Incremental~~s = \langle x : s_1, s_2 \rangle}$
 
 \begin{displaymath}
 	\frac{\begin{array}{c}
-		\delta_\varepsilon, s_1 \vdash \mathtt{load}_\Delta (F,v_1,d_1)~ \delta_F \rhd (\delta_{v_1},\delta_{d_1})\\
-		(\delta_\varepsilon, x \mapsto (\delta_{v_1} v_1, \emptyset), x_{md} \mapsto (\delta_{d_1} d_1, \emptyset)), s_2 \vdash \mathtt{load}_\Delta (F,v_2,d_2)~ \delta_F \rhd (\delta_{v_2},\delta_{d_2})\\
-		valid_{12}({d_1}',{d_2}') = valid({d_1}') \wedge valid({d_2}')
+		\varepsilon, r, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~F \rhd ((v_1, v_2),b)\\
+		\varepsilon, \delta_\varepsilon, r, s_1 \vdash \mathtt{load}_\Delta (F,v_1,d_1)~ \delta_F \rhd (\delta_{v_1},\delta_{d_1})\\
+		(\varepsilon, x \mapsto v_1, x_{md} \mapsto d_1), (\delta_\varepsilon, \delta_x \mapsto \delta_{v_1}, x_{md} \mapsto \delta_{d_1}), r, s_2 \vdash \mathtt{load}_\Delta (F,v_2,d_2)~ \delta_F \rhd (\delta_{v_2},\delta_{d_2})\\
+		%valid_{12}({d_1}',{d_2}') = valid({d_1}') \wedge valid({d_2}')
 	\end{array}}
-	{\delta_\varepsilon, \langle x:s_1,s_2 \rangle \vdash \mathtt{load}~ (F,(v_1,v_2),(b,(d_1,d_2)))~ u \rhd (\delta_{v_1} \otimes \delta_{v_2},valid_{12} \leftarrow (\delta_{d_1} \otimes \delta_{d_2})) }
+	{\delta_\varepsilon, \langle x:s_1,s_2 \rangle \vdash \mathtt{load}~ (F,(v_1,v_2),b)~ u \rhd (\delta_{v_1} \otimes \delta_{v_2},\delta_{d_1} \otimes \delta_{d_2}) }
 \end{displaymath}
 
-If reader find it difficult to understand $(\delta_{v_1} \otimes \delta_{v_2},\leadsto valid_{12} \otimes (\delta_{d_1} \otimes \delta_{d_2}))$, it can be viewed as apply corresponding change to $((v_1,v_2),(b,(d_1,d_2)))$ and recheck the correctness of new metadata $({d_1}', {d_2}')$\\
+For dependant pair, Increamental Forest will delta load both the representation and metadata, and apply the changes to the dependant pair.\\
 
 $\boxed{s = \mathtt{P}(e)}$
 
 \begin{displaymath}
 	\frac
 	{b = \llbracket e \rrbracket^{\varepsilon}_{Bool}}
-	{\varepsilon, \mathtt{P}(e) \vdash \mathtt{load}~F \rhd ((),(b,()))}
+	{\varepsilon, r, \mathtt{P}(e) \vdash \mathtt{load}~F \rhd ((),(b,()))}
 \end{displaymath}
 
 $\boxed{Incremental~~s = P(e)}$
 
 \begin{displaymath}
-	\frac{ \varepsilon_{old} = \varepsilon_{new}}
-	{\delta_\varepsilon, P(e) \vdash \mathtt{load}~ (F,v,d) ~\delta_F \rhd (\emptyset, \emptyset)}
+	\frac{ \delta_\varepsilon(\varepsilon) \mid_{fv(e)} = \emptyset \lor \llbracket e \rrbracket^{\varepsilon}_{Bool} = \llbracket e \rrbracket^{\delta_\varepsilon(\varepsilon) \varepsilon}_{Bool}}
+	{\varepsilon, \delta_\varepsilon, r, P(e) \vdash \mathtt{load}~ (F,v,d) ~\delta_F \rhd (\emptyset, \emptyset)}
 \end{displaymath}
 
 \begin{displaymath}
-	\frac{ \varepsilon_{old} \not= \varepsilon ~\wedge~  b = \llbracket e \rrbracket^{\varepsilon_{new}}_{Bool}}
-	{\delta_\varepsilon, P(e) \vdash \mathtt{load}~ (F,v,d) ~\delta_F \rhd (\emptyset,\fst(\leadsto b))}
+	\frac{ \llbracket e \rrbracket^{\varepsilon}_{Bool} \not= \llbracket e \rrbracket^{\delta_\varepsilon(\varepsilon) \varepsilon}_{Bool}}
+	{\delta_\varepsilon, r, P(e) \vdash \mathtt{load}~ (F,v,d) ~\delta_F \rhd (\emptyset,\fst(\leadsto b))}
 \end{displaymath}
 
-If nothing has changed in the environment, Incremental Forest will spare the labor of testing the bool expresiion. Otherwise, Incremental Forest will test the expression under new environment.\\
+If free variables in expression $e$ hasn't changed or the expression $e$ evaluates to the same value in new and old environment, Incremental Forest will do nothing.
+Otherwise, Incremental Forest will test the expression under new environment.\\
 
-$\boxed{Incremental~~s = s?}$
+$\boxed{s = s_1?}$
 
+\begin{displaymath}
+	\frac
+	{r \notin \mathtt{dom}(F)}
+	{\varepsilon, r, s_1? \vdash \mathtt{load}~F \rhd (Nothing, True)}
+\end{displaymath}
+
+\begin{displaymath}
+	\frac
+	{r \in \mathtt{dom}(F) \quad \varepsilon, r, s_1 \vdash \mathtt{load}~F \rhd (v_1, d_1)}
+	{\varepsilon, r, s_1? \vdash \mathtt{load}~F \rhd (Just ~v_1, Just ~d_1)}
+\end{displaymath}
+
+
+$\boxed{Incremental~~s = s_?}$
+
+\begin{displaymath}
+	\varepsilon, r, s_1 \vdash \mathtt{load}~F \rhd (v, d)
+\end{displaymath}
+
+\begin{displaymath}
+	\frac{
+		r \notin \mathtt{dom}(\delta_F F) \quad v = Nothing
+	}
+	{\varepsilon, \delta_\varepsilon, r, s_1? \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\emptyset, \emptyset)}
+\end{displaymath}
+\begin{comment}
 \begin{displaymath}
 	\frac{
 		r' = \varepsilon_{new}(r) \quad r \notin \mathtt{dom}(F) \quad r' \notin \mathtt{dom}(\delta_F~F)
 	}
 	{\delta_\varepsilon, s? \vdash \mathtt{load}_\Delta (F,v,d)~ u \rhd (\emptyset, \emptyset)}
 \end{displaymath}
+\end{comment}
 
 \begin{displaymath}
 	\frac{
-		r' = \varepsilon_{new}(r)  \quad r \in \mathtt{dom}(F) \quad r' \notin \mathtt{dom}(\delta_F~F)
+		r \notin \mathtt{dom}(\delta_F F) \quad v = Just~ v' \quad
+		\varepsilon, r, s_1 \vdash \mathtt{load}~F \rhd (v_1, d_1)
 	}
-	{\delta_\varepsilon, s? \vdash \mathtt{load}_\Delta (F,v,d)~ u \rhd (\leadsto Nothing,\leadsto (True,Nothing))}
+	{\varepsilon, \delta_\varepsilon, r, s_1? \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\leadsto v_1, \leadsto d_1)}
+\end{displaymath}
+
+\begin{displaymath}
+	\frac{
+		r \in \mathtt{dom}(\delta_F F) \quad v = Nothing \quad
+		\varepsilon, r, s_1 \vdash \mathtt{load}~F \rhd (v_1, d_1)
+	}
+	{\varepsilon, \delta_\varepsilon, r, s_1? \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\leadsto v_1, \leadsto d_1)}
 \end{displaymath}
 
 \begin{displaymath}
 	\frac{\begin{array}{c}
-	r' = \varepsilon_{new}(r) \quad r \notin \mathtt{dom}(F) \quad r' \in \mathtt{dom}(\delta_F~F), \quad
-		\varepsilon_{new}, s \vdash \mathtt{load}~ (\delta_F~F) \rhd (v',d')
+		r \in \mathtt{dom}(\delta_F F) \quad v = Just~v' \quad
+		\varepsilon, \delta_\varepsilon, r, s_1 \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
 	\end{array}}
-	{\delta_\varepsilon, s? \vdash \mathtt{load}_\Delta (F,v,d)~ u \rhd (\leadsto Just~v',\leadsto (valid(d'),Just~d'))}
+	{\varepsilon, \delta_\varepsilon, r, s_1? \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)}
 \end{displaymath}
 
-\begin{displaymath}
-	\frac{\begin{array}{c}
-	r' = \varepsilon_{new}(r) \quad r \in \mathtt{dom}(F) \quad r' \in \mathtt{dom}(\delta_F~F), \quad
-		\delta_\varepsilon, s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
-	\end{array}}
-	{\delta_\varepsilon, s? \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)}
-\end{displaymath}
-
-Incremental Forest will check whether the new path $r'$ is defined under the new file system $\delta_F~F$ and perform the same operation as static Forest does.\\
+Incremental Forest will check whether the current path $r$ is defined under the new file system $\delta_F~F$ and perform the same operation as static Forest does.\\
 
 $\boxed{s = [ s \mid x \in e]}$
 
 \begin{displaymath}
 	\frac{\begin{array}{c}
-		\llbracket e \rrbracket^{\varepsilon}_{\{Path\}} = \{n_1,n_2,\dots,n_k\}\\
-		\forall i \in \{1,2,\dots,k\}, (\varepsilon, r \mapsto r/n_i,s) \vdash \mathtt{load}~F \rhd (v_i, d_i)\\
-		vs ~\mathtt{maps} ~n_i \to v_i, ~ds ~\mathtt{maps} ~n_i \to d_i, ~b = \bigwedge_{i=1}^k valid(d_i) 
+		\llbracket e \rrbracket^{\varepsilon}_{\{\tau\}} = \{t_1,t_2,\dots,t_k\}\\
+		\forall i \in \{1,2,\dots,k\}, (\varepsilon, x \mapsto t_i), r, s\vdash \mathtt{load}~F \rhd (v_i, d_i)\\
+		vs ~\mathtt{maps} ~t_i \to v_i, ~ds ~\mathtt{maps} ~t_i \to d_i
 	\end{array}}
-	{\varepsilon, [ s \mid x \in e] \vdash \mathtt{load}~F \rhd (vs,(b,ds)) }
+	{\varepsilon, [ s \mid x \in e] \vdash \mathtt{load}~F \rhd (vs,ds) }
 \end{displaymath}
 
-To make Forest incremental, we make some changes in static comprehension specification. First, we abandon arbitrary type of comprehension and restrict it to be set of filenames $n$. Second, we write the loading path for every filename explicitly as $r/n_i$ while static Forest exploit $e\!::\!s$ implicitly to help it accomplish that. Third, we change the data structure of $vs$ and $ds$ as $\mathtt{map}$ so that we can easily find representation $v_i$ and metadata $d_i$ of certain filename $n_i$. 
+To make Forest incremental, %we make some changes in static comprehension specification. 
+%First, we abandon arbitrary type of comprehension and restrict it to be set of filenames $n$. 
+%Second, we write the loading path for every filename explicitly as $r/n_i$ while static Forest exploit $e\!::\!s$ implicitly to help it accomplish that. 
+we change the data structure of $vs$ and $ds$ as $\mathtt{map}$ so that we can easily find representation $v_i$ and metadata $d_i$ of certain item $t$. 
 \begin{eqnarray*}
-	vs(n) = v \\
-	ds(n) = v 
+	vs(t) = v \\
+	ds(t) = d 
 \end{eqnarray*}
 
 All these changes are made to preserve the atomic property of Incremental Forest so that we can get all the information we need in one operation.\\
 
 $\boxed{Incremental~~ s = [ s \mid x \in e]}$
+\begin{displaymath}
+	\frac{\begin{array}{c}
+		T = \llbracket e \rrbracket^{\varepsilon}_{\{\tau\}} \quad T' = \llbracket e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{\{\tau\}} \\
+		Dv = \Pi ~\delta_i^v, Dd = \Pi ~\delta_i^d \quad where ~\forall t_i \in T \setminus T', \quad \delta_i^v = \mathtt{del}(t_i), \delta_i^d = \mathtt{del}(t_i) \\
+		Av = \Pi ~\delta_j^v, Ad = \Pi ~\delta_j^d \\ 
+		where ~\forall t_j \in T' \setminus T, \quad (\varepsilon, x \mapsto t_j), r, s \vdash \mathtt{load}(\delta_F F) \rhd (v_j, d_j) \quad \delta_j^v = \mathtt{add}(t_j, v_j), \delta_j^d = \mathtt{add}(t_j, d_j) \\
+		Mv = \Pi ~\delta_k^v, Ad = \Pi ~\delta_k^d \\ 
+		where ~\forall t_k \in T' \cap T, \quad (\varepsilon, x \mapsto t_i),\delta_\varepsilon, r, s \vdash \mathtt{load}_\Delta(F, vs(t_i), ds(t_i)) \delta_F \rhd (\delta_v, \delta_d) \quad \delta_k^v = \mathtt{mod}(t_i, \delta_v), \delta_k^d = \mathtt{mod}(t_i, \delta_d) \\
+	\end{array}}
+	{\varepsilon, \delta_\varepsilon, r, [ s \mid x \in e] \vdash \mathtt{load}_\Delta~ (F,vs,ds)~ \delta_F \rhd (Dv \cdot Av \cdot Mv, ~Dd \cdot Ad \cdot Md) }
+\end{displaymath}
+Changes on the evaluation of expression $e$ is arbitrary, thus we need to categorize these changes to three types.
+\begin{enumerate}
+	\item If the item $t_i$ doesn't exist in new environment, Incremental Forest delete corresponding representation and metadata from the map.
+	\item If the item $t_j$ doesn't exist in old environment but appears in the new environment, Incremental Forest add corresponding representation and metadata to the map.
+	\item If the item $t_k$ is maintained in both environments, Incremental Forest delta load the file recursively. 
+\end{enumerate}
+These changes can be viewed as three different sets where $Dv$, $Av$ and $Mv$ are changes on representation map $vs$, and $Dd$, $Ad$ and $Md$ are changes on metadata map $ds$. We combine them as a sequence of changes.
+
+\begin{comment}
 \begin{displaymath}
 	\frac{\begin{array}{c}
 		\Delta_v = \emptyset, ~\Delta_d = \emptyset\\
@@ -369,6 +448,7 @@ If the filename $n$ doesn't exist in old environment, Incremental Forest add cor
 	{\mathtt{changeVOf}(n) = \mathtt{mod}((n,v), \snd\delta_v), ~~\mathtt{changeDOf}(n) = \mathtt{mod}((n,d), \snd\delta_d)}
 \end{displaymath}
 If the filename $n$ is preserved in both environments, Incremental Forest delta-load the file recursively. One thing to notice here is that we append the name $n$ directly to the filepath $r$. Because in either old or new environment, the expression $e$ can always be evaluated to this $r/n$ filepath, in this level of recursion, we don't need to record the change in filepath. This makes the delta environment clear of unexpected change on variables.
+\end{comment}
 
 \newpage
 \section{Proof}
@@ -795,3 +875,6 @@ If there is no update in file system nor environment, Incremental Forest will re
 \end{proof}
 
 \end{document}
+
+%\begin{vacation}
+
