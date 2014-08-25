@@ -33,6 +33,7 @@
 \def\fst{\pi_1}
 \def\snd{\pi_2}
 \def\id{\emptyset}
+\def\newenv{\delta_\varepsilon(\varepsilon)}
 
 \title{Incremental Forest Draft}
 \author{Yiming Wu}
@@ -275,10 +276,11 @@ $\boxed{Incremental~~s = \langle x : s_1, s_2 \rangle}$
 	\frac{\begin{array}{c}
 		\varepsilon, r, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~F \rhd ((v_1, v_2),b)\\
 		\varepsilon, \delta_\varepsilon, r, s_1 \vdash \mathtt{load}_\Delta (F,v_1,d_1)~ \delta_F \rhd (\delta_{v_1},\delta_{d_1})\\
-		(\varepsilon, x \mapsto v_1, x_{md} \mapsto d_1), (\delta_\varepsilon, \delta_x \mapsto \delta_{v_1}, x_{md} \mapsto \delta_{d_1}), r, s_2 \vdash \mathtt{load}_\Delta (F,v_2,d_2)~ \delta_F \rhd (\delta_{v_2},\delta_{d_2})\\
+		(\varepsilon, x \mapsto v_1, x_{md} \mapsto b), (\delta_\varepsilon, \delta_x \mapsto \delta_{v_1}, x_{md} \mapsto \delta_{d_1}), r, s_2 \vdash \mathtt{load}_\Delta (F,v_2,d_2)~ \delta_F \rhd (\delta_{v_2},\delta_{d_2})\\
 		%valid_{12}({d_1}',{d_2}') = valid({d_1}') \wedge valid({d_2}')
+		b' = \delta_{d_1} d_1 \land \delta_{d_2} d_2
 	\end{array}}
-	{\delta_\varepsilon, \langle x:s_1,s_2 \rangle \vdash \mathtt{load}~ (F,(v_1,v_2),b)~ u \rhd (\delta_{v_1} \otimes \delta_{v_2},\delta_{d_1} \otimes \delta_{d_2}) }
+	{\delta_\varepsilon, \langle x:s_1,s_2 \rangle \vdash \mathtt{load}~ (F,(v_1,v_2),b)~ u \rhd (\delta_{v_1} \otimes \delta_{v_2}, \leadsto b' }
 \end{displaymath}
 
 For dependant pair, Increamental Forest will delta load both the representation and metadata, and apply the changes to the dependant pair.\\
@@ -288,7 +290,7 @@ $\boxed{s = \mathtt{P}(e)}$
 \begin{displaymath}
 	\frac
 	{b = \llbracket e \rrbracket^{\varepsilon}_{Bool}}
-	{\varepsilon, r, \mathtt{P}(e) \vdash \mathtt{load}~F \rhd ((),(b,()))}
+	{\varepsilon, r, \mathtt{P}(e) \vdash \mathtt{load}~F \rhd ((),b)}
 \end{displaymath}
 
 $\boxed{Incremental~~s = P(e)}$
@@ -299,8 +301,8 @@ $\boxed{Incremental~~s = P(e)}$
 \end{displaymath}
 
 \begin{displaymath}
-	\frac{ \llbracket e \rrbracket^{\varepsilon}_{Bool} \not= \llbracket e \rrbracket^{\delta_\varepsilon(\varepsilon) \varepsilon}_{Bool}}
-	{\delta_\varepsilon, r, P(e) \vdash \mathtt{load}~ (F,v,d) ~\delta_F \rhd (\emptyset,\fst(\leadsto b))}
+	\frac{ \llbracket e \rrbracket^{\varepsilon}_{Bool} \not= (b' = \llbracket e \rrbracket^{\delta_\varepsilon(\varepsilon) \varepsilon}_{Bool})}
+	{\delta_\varepsilon, r, P(e) \vdash \mathtt{load}~ (F,v,d) ~\delta_F \rhd (\emptyset,\leadsto b')}
 \end{displaymath}
 
 If free variables in expression $e$ hasn't changed or the expression $e$ evaluates to the same value in new and old environment, Incremental Forest will do nothing.
@@ -398,7 +400,7 @@ $\boxed{Incremental~~ s = [ s \mid x \in e]}$
 		Av = \Pi ~\delta_j^v, Ad = \Pi ~\delta_j^d \\ 
 		where ~\forall t_j \in T' \setminus T, \quad (\varepsilon, x \mapsto t_j), r, s \vdash \mathtt{load}(\delta_F F) \rhd (v_j, d_j) \quad \delta_j^v = \mathtt{add}(t_j, v_j), \delta_j^d = \mathtt{add}(t_j, d_j) \\
 		Mv = \Pi ~\delta_k^v, Ad = \Pi ~\delta_k^d \\ 
-		where ~\forall t_k \in T' \cap T, \quad (\varepsilon, x \mapsto t_i),\delta_\varepsilon, r, s \vdash \mathtt{load}_\Delta(F, vs(t_i), ds(t_i)) \delta_F \rhd (\delta_v, \delta_d) \quad \delta_k^v = \mathtt{mod}(t_i, \delta_v), \delta_k^d = \mathtt{mod}(t_i, \delta_d) \\
+		where ~\forall t_k \in T' \cap T, \quad (\varepsilon, x \mapsto t_k),\delta_\varepsilon, r, s \vdash \mathtt{load}_\Delta(F, vs(t_k), ds(t_k)) \delta_F \rhd (\delta_v, \delta_d) \quad \delta_k^v = \mathtt{mod}(t_k, \delta_v), \delta_k^d = \mathtt{mod}(t_k, \delta_d) \\
 	\end{array}}
 	{\varepsilon, \delta_\varepsilon, r, [ s \mid x \in e] \vdash \mathtt{load}_\Delta~ (F,vs,ds)~ \delta_F \rhd (Dv \cdot Av \cdot Mv, ~Dd \cdot Ad \cdot Md) }
 \end{displaymath}
@@ -456,27 +458,29 @@ In this section, we will discuss about assumptions and theorems of Incremental F
 \begin{assumption}[Update Sequence]
 	Incremental Forest takes in a sequence of updates consists of 
 	\begin{displaymath}
-		\mathtt{addFile}(r,\omega) ~|~ \mathtt{rmvFile}(r) ~|~ \mathtt{chgAttri}(r,a')
+		\mathtt{addFile}(r,\omega) ~|~ \mathtt{rmvFile}(r)% ~|~ \mathtt{chgAttri}(r,a')
 	\end{displaymath}
 	Or empty sequence $\emptyset$.
 \end{assumption}
 
 Complex updates can be constructed from atomic updates.
 
+\begin{comment}
 \begin{assumption}[Filesystem is a tree]
 	Incremental Forest views symbolic link as a normal file. \\
 	not necessarily needed.
 \end{assumption}
+\end{comment}
 
 \begin{theorem}[Soundness]
 	Incremental Forest satisfied the rule that
 	\begin{align*}
-		& \varepsilon, s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
-		& \delta_\varepsilon, s \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
-		& \varepsilon_{new}, s \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (v',d')
+		& \varepsilon, r, s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
+		& \varepsilon, \delta_\varepsilon, r, s \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
+		& \varepsilon_{new}, r, s \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (v',d')
 	\end{align*}
 	\begin{displaymath}
-		v' = \delta_v v, \quad d' = \delta_d d
+		where ~v' = \delta_v v, \quad d' = \delta_d d
 	\end{displaymath}
 \end{theorem}
 
@@ -484,6 +488,7 @@ Complex updates can be constructed from atomic updates.
 	By induction\\
 	\textbf{Case: } $s = k$\\
 	\begin{enumerate}
+	\begin{comment}
 	\item
 	By definition, if $\varepsilon_{old}(r) \not= \varepsilon_{new}(r)$,
 	\begin{align*}
@@ -495,14 +500,14 @@ Complex updates can be constructed from atomic updates.
 		\leadsto \omega' ~v = \omega' \quad \leadsto (True, a) ~d = (True, a)
 	\end{displaymath}
 	The Soundness Theorem holds for the $\varepsilon_{old}(r) \not= \varepsilon_{new}(r)$ case here. \\
-
+	\end{comment}
 	\item
 	By definition, if $\delta_F = \mathtt{addFile}(r',\omega')$, here we use $r$ to represent $\varepsilon_{old}(r)$ \\
 	\textbf{Case: } $r = r'$
 	\begin{align*}
-			& \varepsilon, s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
-			& \delta_\varepsilon, s \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\leadsto \omega', \leadsto (True, a))\\
-			& \varepsilon_{new}, s \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (\omega', (True, a))
+			& \varepsilon, r, s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
+			& \varepsilon, \delta_\varepsilon, r, s \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\leadsto \omega', \leadsto (True, a))\\
+			& \varepsilon_{new}, r, s \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (\omega', (True, a))
 	\end{align*}
 	\begin{displaymath}
 		\leadsto \omega' ~v = \omega' \quad \leadsto (True, a) ~d = (True, a)
@@ -518,38 +523,47 @@ Complex updates can be constructed from atomic updates.
 		\emptyset ~v = v \quad \emptyset ~d = d
 	\end{displaymath}
 	The Soundness Theorem holds for the $r \not= r'$ case here.\\
-	With same method, we can easily prove that Soundness holds for $\mathtt{rmvFile}(r')$, $\mathtt{addAttri}(r', a')$ and $\emptyset$ scenarios. Thus we can conclude that Soundness holds for the constant specification case.
+	With same method, we can easily prove that Soundness holds for $\mathtt{rmvFile}(r')$ scenario. 
+	Thus we can conclude that Soundness holds for the constant specification case.
 	\end{enumerate}
 	
 	\textbf{Case: } $e::s$\\
 	\begin{enumerate}
 	\item 
-	When the generated path $\llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}$ keeps the same in both old and new environment, by induction, we assume that Soundness holds for $(\delta_\varepsilon \setminus r, r \mapsto (\llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}, \emptyset)) , s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)$, which means.
+	\textbf{Case: } $\llbracket r/e \rrbracket^{\varepsilon}_{Path} = \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}$ \\
+	When the generated path $\llbracket r/e \rrbracket^{\varepsilon}_{Path}$ keeps the same in both old and new environment, by induction, we assume that Soundness holds for $\varepsilon, \delta_\varepsilon, \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)$, which means.
 	\begin{align*}
-			& (\varepsilon, r \mapsto \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}), s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
-			& (\delta_\varepsilon \setminus r, r \mapsto (\llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}, \emptyset)) , s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
-			& (\varepsilon, r \mapsto \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}), s \vdash \mathtt{load}~ F~ \rhd (\delta_v~v,\delta_d~d)
+			& \varepsilon, \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load}~ F \rhd (v,d)\\
+			& \varepsilon, \delta_\varepsilon, \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
+			& \delta_\varepsilon(\varepsilon), \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load} ~(\delta_F F) \rhd (\delta_v~v,\delta_d~d)
 	\end{align*}
-	By definition of $e::s$ static load and incremental load, we will have
+	By definition of $e::s$ static load, we will have
 	\begin{align*}
-			& \varepsilon, e::s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
-			& \delta_\varepsilon, e::s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
-			& \varepsilon, e::s \vdash \mathtt{load}~ F~ \rhd (\delta_v~v,\delta_d~d)
+			& \varepsilon, r, e::s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
+			& \varepsilon, \delta_\varepsilon, r, e::s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
+			& \delta_\varepsilon(\varepsilon), r, e::s \vdash \mathtt{load}~ F~ \rhd (\delta_v~v,\delta_d~d)
 	\end{align*}
-
+	\begin{displaymath}
+		\delta_v~v = \delta_v~v \quad \delta_d~d = \delta_d~d
+	\end{displaymath}
+	The Soundness Theorem holds for this case.
 	\item 
-	When the generated path changes, by induction, we assume that Soundness holds for $(\delta_\varepsilon \setminus r, r \mapsto (r, \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path})) , s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)$, which means.
+	\textbf{Case: } $\llbracket r/e \rrbracket^{\varepsilon}_{Path} \not= \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}$ \\
+	When the generated path changes, by definition, it means that the static load in new environment $\delta_\varepsilon(\varepsilon)$ will result in totally different representation $v'$ and metadata $d'$.
+	%by induction, we assume that Soundness holds for $(\delta_\varepsilon \setminus r, r \mapsto (r, \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path})) , s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)$, which means.
 	\begin{align*}
-			& (\varepsilon, r \mapsto \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}), s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
-			& (\delta_\varepsilon \setminus r, r \mapsto (\llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}, \emptyset)) , s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
-			& (\varepsilon, r \mapsto \llbracket r/e \rrbracket^{\varepsilon_{new}}_{Path}), s \vdash \mathtt{load}~ F~ \rhd (\delta_v~v,\delta_d~d)
+			& \varepsilon, \llbracket r/e \rrbracket^{\varepsilon}_{Path}, s \vdash \mathtt{load}~ F \rhd (v,d)\\
+			%& \varepsilon, \delta_\varepsilon, \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
+			& \delta_\varepsilon(\varepsilon), \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load} ~(\delta_F F) \rhd (v',d')
 	\end{align*}
-	By definition of $e::s$ static load and incremental load, we will have
+	By definition of $e::s$ incremental load, we will have
 	\begin{align*}
-			& \varepsilon, e::s \vdash \mathtt{load}~ F~ \rhd (v,d)\\
-			& \delta_\varepsilon, e::s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)\\
-			& \varepsilon, e::s \vdash \mathtt{load}~ F~ \rhd (\delta_v~v,\delta_d~d)
+			& \varepsilon, \delta_\varepsilon, \llbracket r/e \rrbracket^{\delta_\varepsilon(\varepsilon)}_{Path}, s \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\leadsto v',\leadsto d')
 	\end{align*}
+	\begin{displaymath}
+		v' = \leadsto v' ~ v \quad d' = \leadsto d' ~ v
+	\end{displaymath}
+	The Soundness Theorem holds for this case.\\
 	Thus we can conclude that Soundness holds for the focus specification case.
 	\end{enumerate}
 	
@@ -558,124 +572,161 @@ Complex updates can be constructed from atomic updates.
 	\item
 	By definition
 	\begin{align*}
-			& \varepsilon, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~ F~ \rhd ((v_1, v_2), (b, (d_1, d_2)))\\
-			& \delta_\varepsilon, \langle x : s_1, s_2 \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\delta_v, \delta_d)\\
-			& \varepsilon_{new}, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~ (\delta_F~F)~ \rhd ((v_1', v_2'), (b', (d_1', d_2')))
+			& \varepsilon, r, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~ F~ \rhd ((v_1, v_2), b)\\
+			& \varepsilon, \delta_\varepsilon, r, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\delta_{v_1} \otimes \delta_{v_2},\delta_{d_1} \cdot \delta_{d_2})\\
+			& \delta_\varepsilon(\varepsilon), r, \langle x : s_1, s_2 \rangle \vdash \mathtt{load}~ (\delta_F~F)~ \rhd ((v_1', v_2'), b')
 	\end{align*}
 	By induction, Soundness holds for $s_1$.
 	\begin{displaymath}
-		\delta_\varepsilon, s_1 \vdash \mathtt{load}_\Delta (F,v_1,d_1)~ u \rhd (\delta_{v_1},\delta_{d_1})
+		\varepsilon, \delta_\varepsilon, r, s_1 \vdash \mathtt{load}_\Delta (F,v_1,d_1)~ u \rhd (\delta_{v_1},\delta_{d_1})
 	\end{displaymath}
 	\begin{displaymath}
-		\delta_{v_1} ~v_1 = v_1' \quad \delta_{d_1} ~d_1 = d_1'
+		\delta_{v_1} ~v_1 = v_1' \quad \delta_{d_1} ~b = b''
 	\end{displaymath}
-	Because the delta environment $(\delta_\varepsilon, x \mapsto (v_1,\delta_{v_1}), x_{md} \mapsto (d_1,\delta_{d_1}))$ will keep the record of update of $v_1$ and $d_1$, Soundness also holds for $s_2$ so that
+	Because the delta environment $(\delta_\varepsilon, \delta_x \mapsto \delta_{v_1}, x_{md} \mapsto \delta_{d_1})$ will keep the record of update of $v_1$ and $d_1$, Soundness also holds for $s_2$ so that
 	\begin{displaymath}
-		(\delta_\varepsilon, x \mapsto (v_1,\delta_{v_1}), x_{md} \mapsto (d_1,\delta_{d_1})), s_2 \vdash \mathtt{load}_\Delta (F,v_2,d_2)~ u \rhd (\delta_{v_2},\delta_{d_2})
+		(\varepsilon, x \mapsto v_1, x_{md} \mapsto b), (\delta_\varepsilon, \delta_x \mapsto \delta_{v_1}, x_{md} \mapsto \delta_{d_1}), r, s_2 \vdash \mathtt{load}_\Delta (F,v_2,d_2)~ \delta_F \rhd (\delta_{v_2},\delta_{d_2})
 	\end{displaymath}
 	\begin{displaymath}
-		\delta_{v_2} ~v_2 = v_2' \quad \delta_{d_2} ~d_2 = d_2'
+		\delta_{v_2} ~v_2 = v_2' \quad \delta_{d_2} ~b'' = b'''
 	\end{displaymath}
-	To apply changes on data, we use $\otimes$ to apply two changes. The result should be the same with $(v_1', v_2')$ and $(d_1', d_2')$.
+	To apply changes on data, we use $\otimes$ to apply two changes. The representation result should be the same with $(v_1', v_2')$.
 	\begin{displaymath}
-		\delta_{v_1} \otimes \delta_{v_2} ~(v_1, v_2) = (v_1', v_2') \quad \delta_{v_1} \otimes \delta_{d_2} ~(d_1, d_2) = (d_1', d_2')
+		\delta_{v_1} \otimes \delta_{v_2} ~(v_1, v_2) = (v_1', v_2')
 	\end{displaymath}
-	Finally $valid_{12} \leftarrow$ will validate the two metadata and change the original one. The result of it goes the same with the $b'$. Thus we can conclude that Soundness holds for the dependant pair specification case.
+	Then we discuss the metadata result. By definition
+	\begin{displaymath}
+		b' = \delta_{d_1} ~d_1 \land \delta_{d_2} ~d_2
+	\end{displaymath}
+	So we need to prove that
+	\begin{displaymath}
+		\delta_{d_1} \cdot \delta_{d_2} (d_1 \land d_2) = \delta_{d_1} ~d_1 \land \delta_{d_2} ~d_2
+	\end{displaymath}
+	\begin{lemma}[Compact Changes]
+	Changes will eventually evaluated into $\leadsto v$ form.
+	\end{lemma}
+	\begin{proof}
+	With the algebra operation of changes, 
+	\begin{displaymath}
+		\delta \cdot \leadsto v \Rightarrow \leadsto v
+	\end{displaymath}
+	\begin{displaymath}
+		\delta \cdot \emptyset \Rightarrow \emptyset
+	\end{displaymath}
+	And change $\delta$ can clear all the $\emptyset$ on its rightside and be evaluated to its rightmost $\leadsto v$
+	\end{proof}
+	If $\delta_{d_1} (True) = False \land d_1 = True$,
+	\\
+	Thus we can conclude that Soundness holds for the dependant pair specification case.
 	\end{enumerate}
 
 	\textbf{Case: } $s = P(e)$\\
 	\begin{enumerate}
 	\item
+	\textbf{Case: } $\delta_\varepsilon(\varepsilon) \mid_{fv(e)} = \emptyset \lor \llbracket e \rrbracket^{\varepsilon}_{Bool} = \llbracket e \rrbracket^{\delta_\varepsilon(\varepsilon) \varepsilon}_{Bool}$
 	By definition
 	\begin{align*}
-		& \varepsilon, P(e) \vdash \mathtt{load}~ F~ \rhd ((),(b,()))\\
-		& \delta_\varepsilon, P(e) \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\delta_v, \fst(\leadsto b'))\\
-		& \varepsilon_{new}, P(e) \vdash \mathtt{load}~ (\delta_F~F)~ \rhd ((),(b'',()))
+		& \varepsilon, r, \mathtt{P}(e) \vdash \mathtt{load}~F \rhd ((),b)\\
+		& \delta_\varepsilon, P(e) \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\emptyset, \emptyset)\\
+		& \varepsilon_{new}, P(e) \vdash \mathtt{load}~ (\delta_F~F)~ \rhd ((),b')
 	\end{align*}
-	In the equations, 
 	\begin{displaymath}
-		b' = \llbracket e \rrbracket^{\varepsilon_{new}}_{Bool} \quad b'' = \llbracket e \rrbracket^{\varepsilon_{new}}_{Bool}
+		b' = b \quad b' = \emptyset ~b
 	\end{displaymath}
-	The $b'$ and $b''$ holds the same value. Thus we can conclude that Soundness holds for the predicate specification case.
+	Thus, we can conclude Soundness holds for this case.
+
+	\item
+	\textbf{Case: } $\llbracket e \rrbracket^{\varepsilon}_{Bool} \not= ( b'' = \llbracket e \rrbracket^{\delta_\varepsilon(\varepsilon) \varepsilon}_{Bool})$
+	By definition
+	\begin{align*}
+		& \varepsilon, r, \mathtt{P}(e) \vdash \mathtt{load}~F \rhd ((),b)\\
+		& \delta_\varepsilon, P(e) \vdash \mathtt{load}~ (F,v,d)~ \delta_F \rhd (\emptyset, \leadsto b'')\\
+		& \varepsilon_{new}, P(e) \vdash \mathtt{load}~ (\delta_F~F)~ \rhd ((),b'')
+	\end{align*}
+	\begin{displaymath}
+		b'' = \leadsto b'' ~b
+	\end{displaymath}
+	Thus, we can conclude Soundness holds for this case.\\
+	Thus we can conclude that Soundness holds for the predicate specification case.
 	\end{enumerate}
 
 	\textbf{Case: } $s = s_1?$\\
 	\begin{enumerate}
 	\item
-	When $r \notin \mathtt{dom}(F) \quad r' \notin \mathtt{dom}(\delta_F~F)$
+	When $r \notin \mathtt{dom}(F) \quad v = Nothing$
 	\begin{align*}
-		& \varepsilon, s_1? \vdash \mathtt{load}~ F~ \rhd (Nothing,(True, Nothing))\\
-		& \varepsilon_{new}, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (Nothing,(True, Nothing))
+		& \varepsilon, r, s_1? \vdash \mathtt{load}~ F~ \rhd (Nothing,(True, Nothing))\\
+		& \newenv, r, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (Nothing,(True, Nothing))
 	\end{align*}
 	The delta load function will generate $(\emptyset, \emptyset)$, which satisfied the Soundness.
 
 	\item
-	When $r \in \mathtt{dom}(F) \quad r' \notin \mathtt{dom}(\delta_F~F)$
+	When $r \in \mathtt{dom}(F) \quad v = Nothing$
 	\begin{align*}
-		& \varepsilon, s_1? \vdash \mathtt{load}~ F~ \rhd (Just ~v, (b, Just ~d))\\
-		& \varepsilon_{new}, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (Nothing,(True, Nothing))
+		& \varepsilon, r, s_1? \vdash \mathtt{load}~ F~ \rhd (Nothing,(True, Nothing))\\
+		& \newenv, r, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (v', d')
 	\end{align*}
-	The delta load function will generate $(\leadsto Nothing, \leadsto (True, Nothing))$, which satisfied the Soundness.
+	The delta load function will generate $(\leadsto v', \leadsto d')$, which satisfied the Soundness.
 
 	\item
-	When $r \notin \mathtt{dom}(F) \quad r' \in \mathtt{dom}(\delta_F~F)$
+	When $r \notin \mathtt{dom}(F) \quad v = Just~ v_1$
 	\begin{align*}
-		& \varepsilon, s_1? \vdash \mathtt{load}~ F~ \rhd (Nothing,(True, Nothing))\\
-		& \varepsilon_{new}, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (Just ~v, (b, Just ~d))
+		& \varepsilon, r, s_1? \vdash \mathtt{load}~ F~ \rhd (Just ~v_1, Just ~d_1)\\
+		& \newenv, r, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (v', d')
 	\end{align*}
-	The delta load function will generate $(\leadsto Just ~v \leadsto (b, Just ~d))$, which satisfied the Soundness.
+	The delta load function will generate $(\leadsto v', \leadsto d')$, which satisfied the Soundness.
 
 	\item
-	When $r \in \mathtt{dom}(F) \quad r' \in \mathtt{dom}(\delta_F~F)$
+	When $r \in \mathtt{dom}(F) \quad v = Just~ v_1$
 	\begin{align*}
-		& \varepsilon, s_1? \vdash \mathtt{load}~ F~ \rhd (Just ~v, (b, Just ~d))\\
-		& \varepsilon_{new}, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (Just ~v', (b', Just ~d'))
+		& \varepsilon, r, s_1? \vdash \mathtt{load}~ F~ \rhd (Just ~v_1, Just ~d_1)\\
+		& \newenv, r, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (Just ~v_2, Just ~d_2)
 	\end{align*}
 	By induction, Soundness holds for
 	\begin{displaymath}
-		\delta_\varepsilon, s_1 \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
+		\varepsilon, \delta_\varepsilon, r s_1 \vdash \mathtt{load}_\Delta (F,v,d)~ \delta_F \rhd (\delta_v,\delta_d)
 	\end{displaymath}
 	\begin{displaymath}
-		v' = \delta_v ~ v, \quad d' = \delta_d ~ (b,d)
+		v_2 = \delta_v ~ v_1, \quad d_2 = \delta_d ~ d_1
 	\end{displaymath}
 	Thus we can conclude that Soundness holds for the optional specification case.
 	\end{enumerate}
 
 	\textbf{Case: } $s = [ s \mid x \in e]$\\
 	\begin{align*}
-		& \varepsilon, s_1? \vdash \mathtt{load}~ F~ \rhd (vs, (b, ds))\\
-		& \varepsilon_{new}, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (vs', (b', ds'))
+		& \varepsilon, r, s_1? \vdash \mathtt{load}~ F~ \rhd (vs, ds)\\
+		& \newenv, r, s_1? \vdash \mathtt{load}~ (\delta_F~F)~ \rhd (vs', ds')
 	\end{align*}
 	For comprehension, we will inspect the change of each single element of $\mathtt{map} ~vs$ and $ds$. We look into these elements by their key value: filename $n$. Then we will prove that the soundness of delete/add/modify each element can eventually composed together to prove the Soundness for updates on the whole map.
 	\begin{enumerate}
 	\item
-	When $ n \in \llbracket e \rrbracket^{\varepsilon_{old}}_{\{Path\}} \setminus \llbracket e \rrbracket^{\varepsilon_{new}}_{\{Path\}}$
+	When $ t \in \llbracket e \rrbracket^{\varepsilon}_{\{\tau\}} \setminus \llbracket e \rrbracket^{\newenv}_{\{\tau\}}$
 	\begin{displaymath}
-		(n, vs(n)) \in vs \wedge (n, vs'(n)) \notin vs', (n, ds) \in ds \wedge (n, ds'(n)) \notin ds'
+		(t, vs(t)) \in vs \wedge (t, vs'(t)) \notin vs', (t, ds) \in ds \wedge (t, ds'(t)) \notin ds'
 	\end{displaymath}
 	Incremental Forest will delete these elements from the $vs'$ and $ds'$, so Soundness holds for this case.
 
 
 	\item
-	When $ n \in \llbracket e \rrbracket^{\varepsilon_{new}}_{\{Path\}} \setminus \llbracket e \rrbracket^{\varepsilon_{old}}_{\{Path\}}$
+	When $ t \in \llbracket e \rrbracket^{\newenv}_{\{\tau\}} \setminus \llbracket e \rrbracket^{\varepsilon}_{\{\tau\}}$
 	\begin{displaymath}
-		(n, vs(n)) \notin vs \wedge (n, vs'(n)) \in vs', (n, ds) \notin ds \wedge (n, ds'(n)) \in ds'
+		(t, vs(t)) \notin vs \wedge (t, vs'(t)) \in vs', (t, ds) \notin ds \wedge (t, ds'(t)) \in ds'
 	\end{displaymath}
 	Incremental Forest will add these elements to the $vs'$ and $ds'$, so Soundness holds for this case.
 
 
 	\item
-	When $ n \in \llbracket e \rrbracket^{\varepsilon_{old}}_{\{Path\}} \cap \llbracket e \rrbracket^{\varepsilon_{new}}_{\{Path\}}$
+	When $ t \in \llbracket e \rrbracket^{\newenv}_{\{\tau\}} \cap \llbracket e \rrbracket^{\varepsilon}_{\{\tau\}}$
 	\begin{displaymath}
-		(n, vs(n)) \in vs \wedge (n, vs'(n)) \in vs', (n, ds) \in ds \wedge (n, ds'(n)) \in ds'
+		(t, vs(t)) \in vs \wedge (t, vs'(t)) \in vs', (t, ds) \in ds \wedge (t, ds'(t)) \in ds'
 	\end{displaymath}
 	Then Incremental Forest will delta load corresponding $v$ and $d$ in the way that satisfies Soundness.
 	\begin{displaymath}
-		(\delta_\varepsilon, r \mapsto (r, \leadsto r/n)), s \vdash \mathtt{load}_\Delta (F,v,d)~ u \rhd (\delta_v,\delta_d)
+		(\varepsilon, x \mapsto t),\delta_\varepsilon, r, s \vdash \mathtt{load}_\Delta(F, vs(t), ds(t)) \delta_F \rhd (\delta_v, \delta_d)
 	\end{displaymath}
 	So that
 	\begin{displaymath}
-		\delta_v ~vs(n) = vs'(n), \quad \delta_d ~ds(n) = ds'(n)
+		\delta_v ~vs(t) = vs'(t), \quad \delta_d ~ds(t) = ds'(t)
 	\end{displaymath}
 	Thus, the modification using $\delta_v$ and $\delta_d$ holds the Soundness for this single element.
 
